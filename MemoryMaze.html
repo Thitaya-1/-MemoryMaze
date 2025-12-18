@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Memory Maze</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      color: #fff;
+    }
+    #game {
+      background: #1e1e2f;
+      padding: 20px;
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+      width: 460px;
+    }
+    h1 { text-align: center; }
+    #info {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 8px;
+      font-size: 14px;
+    }
+    canvas {
+      background: #111;
+      border-radius: 8px;
+      display: block;
+      margin: auto;
+    }
+    #message { text-align: center; margin: 8px 0; }
+    button {
+      width: 100%;
+      padding: 10px;
+      border-radius: 8px;
+      border: none;
+      font-size: 16px;
+      background: #4caf50;
+      color: #fff;
+      cursor: pointer;
+    }
+    button:hover { background: #43a047; }
+  </style>
+</head>
+<body>
+<div id="game">
+  <h1>Memory Maze</h1>
+  <div id="info">
+    <div>Level: <span id="level">1</span></div>
+    <div>Score: <span id="score">0</span></div>
+    <div>Mistakes: <span id="mistakes">3</span></div>
+    <div>Time: <span id="timer">7</span>s</div>
+  </div>
+  <canvas id="maze" width="400" height="400"></canvas>
+  <div id="message">Press Start to play</div>
+  <button id="startBtn">Start Game</button>
+</div>
+
+<!-- Sounds -->
+<audio id="moveSound" src="https://actions.google.com/sounds/v1/cartoon/pop.ogg"></audio>
+<audio id="failSound" src="https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg"></audio>
+<audio id="winSound" src="https://actions.google.com/sounds/v1/cartoon/positive_ding.ogg"></audio>
+
+<script>
+const CELL_SIZE = 40;
+const MAX_MISTAKES = 3;
+
+let level = 1;
+let gridSize = 6;
+let memorizeTime = 7;
+let mistakesLeft = MAX_MISTAKES;
+let score = 0;
+let maze = [];
+let player, goal;
+let showMaze = false;
+let countdownInterval;
+let gameActive = false;
+
+const canvas = document.getElementById('maze');
+const ctx = canvas.getContext('2d');
+
+const moveSound = document.getElementById('moveSound');
+const failSound = document.getElementById('failSound');
+const winSound = document.getElementById('winSound');
+
+function generateMaze(size) {
+  const grid = Array.from({ length: size }, () =>
+    Array.from({ length: size }, () => ({ visited: false, walls: { t:1,r:1,b:1,l:1 } }))
+  );
+  function shuffle(a){ return a.sort(()=>Math.random()-0.5); }
+  function carve(x,y){
+    grid[y][x].visited=true;
+    for(const [dx,dy,w,o] of shuffle([[0,-1,'t','b'],[1,0,'r','l'],[0,1,'b','t'],[-1,0,'l','r']])){
+      const nx=x+dx, ny=y+dy;
+      if(nx>=0&&ny>=0&&nx<size&&ny<size&&!grid[ny][nx].visited){
+        grid[y][x].walls[w]=0; grid[ny][nx].walls[o]=0; carve(nx,ny);
+      }
+    }
+  }
+  carve(0,0); return grid;
+}
+
+function drawMaze(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.strokeStyle='#fff'; ctx.lineWidth=2;
+  for(let y=0;y<gridSize;y++)for(let x=0;x<gridSize;x++){
+    const c=maze[y][x], px=x*CELL_SIZE, py=y*CELL_SIZE;
+    if(showMaze){
+      if(c.walls.t) line(px,py,px+CELL_SIZE,py);
+      if(c.walls.r) line(px+CELL_SIZE,py,px+CELL_SIZE,py+CELL_SIZE);
+      if(c.walls.b) line(px,py+CELL_SIZE,px+CELL_SIZE,py+CELL_SIZE);
+      if(c.walls.l) line(px,py,px,py+CELL_SIZE);
+    }
+  }
+  ctx.fillStyle='#4caf50'; ctx.fillRect(goal.x*CELL_SIZE+10,goal.y*CELL_SIZE+10,20,20);
+  ctx.fillStyle='#ff5252'; ctx.beginPath();
+  ctx.arc(player.x*CELL_SIZE+20,player.y*CELL_SIZE+20,8,0,Math.PI*2); ctx.fill();
+}
+function line(x1,y1,x2,y2){ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();}
+
+function startLevel(){
+  maze=generateMaze(gridSize);
+  player={x:0,y:0}; goal={x:gridSize-1,y:gridSize-1};
+  canvas.width=canvas.height=gridSize*CELL_SIZE;
+  showMaze=true; gameActive=false;
+  let timeLeft=memorizeTime;
+  document.getElementById('timer').textContent=timeLeft;
+  document.getElementById('message').textContent='Memorize the maze';
+  drawMaze();
+  countdownInterval=setInterval(()=>{
+    timeLeft--; document.getElementById('timer').textContent=timeLeft;
+    if(timeLeft<=0){ clearInterval(countdownInterval); showMaze=false; gameActive=true;
+      document.getElementById('message').textContent='Go!'; drawMaze(); }
+  },1000);
+}
+
+function move(dx,dy){
+  if(!gameActive) return;
+  const c=maze[player.y][player.x];
+  if((dx==0&&dy==-1&&c.walls.t)||(dx==1&&dy==0&&c.walls.r)||(dx==0&&dy==1&&c.walls.b)||(dx==-1&&dy==0&&c.walls.l)){
+    failSound.play(); mistakesLeft--; document.getElementById('mistakes').textContent=mistakesLeft;
+    if(mistakesLeft<=0) return gameOver(); return;
+  }
+  player.x+=dx; player.y+=dy; moveSound.play(); score+=10;
+  document.getElementById('score').textContent=score;
+  if(player.x==goal.x&&player.y==goal.y){ winSound.play(); score+=100; level++; gridSize++; memorizeTime=Math.max(3,memorizeTime-1);
+    updateUI(); setTimeout(startLevel,1000); }
+  drawMaze();
+}
+
+function gameOver(){
+  gameActive=false;
+  document.getElementById('message').textContent='Game Over';
+  document.getElementById('startBtn').textContent='Restart';
+  document.getElementById('startBtn').style.display='block';
+}
+
+function updateUI(){
+  document.getElementById('level').textContent=level;
+  document.getElementById('score').textContent=score;
+  document.getElementById('mistakes').textContent=mistakesLeft;
+}
+
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowUp')move(0,-1);
+  if(e.key==='ArrowDown')move(0,1);
+  if(e.key==='ArrowLeft')move(-1,0);
+  if(e.key==='ArrowRight')move(1,0);
+});
+
+document.getElementById('startBtn').onclick=()=>{
+  level=1; score=0; gridSize=6; memorizeTime=7; mistakesLeft=MAX_MISTAKES;
+  updateUI(); document.getElementById('startBtn').style.display='none'; startLevel();
+};
+</script>
+</body>
+</html>
