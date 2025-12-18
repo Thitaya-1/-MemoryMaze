@@ -425,33 +425,58 @@ function startLevel(){
  },1000)
 }
 
-function move(dx,dy){
- if(!playing||!player||!goal)return
- const c=maze[player.y][player.x]
- if((dx==0&&dy==-1&&c.w.t)||(dx==1&&dy==0&&c.w.r)||(dx==0&&dy==1&&c.w.b)||(dx==-1&&dy==0&&c.w.l)){
-  hitSnd.currentTime=0;hitSnd.play()
-  lives--;updateLives();if(lives<=0)return gameOver();return
- }
- stepSnd.currentTime=0;stepSnd.play()
-player.x+=dx;player.y+=dy;score+=10;scoreEl.textContent=score
-	if(player.x===goal.x&&player.y===goal.y){
+// เก็บพิกัดที่เคยเดิน
+let visited = new Set();
 
-  // 🔊 เสียงผ่านด่าน
-  winSnd.currentTime = 0
-  winSnd.play().catch(()=>{})
+function move(dx, dy){
+  if(!playing || !player || !goal) return;
+  const c = maze[player.y][player.x];
 
-  score += 100
-  level++
-  gridSize++
-  memorizeTime = Math.max(3, memorizeTime - 1)
+  // ถ้าเดินชนกำแพง
+  if((dx==0&&dy==-1&&c.w.t)||(dx==1&&dy==0&&c.w.r)||(dx==0&&dy==1&&c.w.b)||(dx==-1&&dy==0&&c.w.l)){
+    hitSnd.currentTime=0; hitSnd.play();
+    lives--;
+    updateLives();
 
-  lives = 3
-  updateLives()
-  levelEl.textContent = level
+    score = Math.max(0, score - 5);
+    scoreEl.textContent = score;
 
-  startLevel()
-}
+    if(lives<=0) return gameOver();
+    return;
+  }
 
+  // เดินได้
+  stepSnd.currentTime=0; stepSnd.play();
+  player.x += dx;
+  player.y += dy;
+
+  // สร้าง key พิกัด
+  const key = `${player.x},${player.y}`;
+
+  // ถ้ายังไม่เคยเดินตรงนี้ ให้เพิ่มคะแนน
+  if(!visited.has(key)){
+    score += 10;
+    scoreEl.textContent = score;
+    visited.add(key);
+  }
+
+  // ถึง goal
+  if(player.x===goal.x && player.y===goal.y){
+    winSnd.currentTime = 0;
+    winSnd.play().catch(()=>{});
+
+    score += 100; // คะแนนตอนผ่านด่าน
+    level++;
+    gridSize++;
+    memorizeTime = Math.max(3, memorizeTime - 1);
+
+    lives = 3;
+    updateLives();
+    levelEl.textContent = level;
+    scoreEl.textContent = score;
+
+    startLevel();
+  }
 }
 
 function startGame(){
@@ -500,4 +525,5 @@ document.getElementById('playerUpload').addEventListener('change',e=>{
 updateLives();draw()
 </script>
 </body>
+
 </html> 
