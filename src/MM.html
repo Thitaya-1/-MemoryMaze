@@ -331,16 +331,64 @@ function generateMaze(n){
 function line(x1,y1,x2,y2){ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke()}
 
 let playerImg=null,playerImgReady=false
+  
 function drawPlayer(){
- if(!player)return
- if(playerImg&&playerImgReady){
-  ctx.drawImage(playerImg,player.x*CELL+CELL*0.15,player.y*CELL+CELL*0.15,CELL*0.7,CELL*0.7)
- }else{
-  ctx.fillStyle='#f472b6'
+  if(!player) return
+
+  const cx = player.x * CELL + CELL / 2
+  const cy = player.y * CELL + CELL / 2
+
+  // ถ้ามีรูปที่ upload → ใช้รูป
+  if(playerImg && playerImgReady){
+    ctx.drawImage(
+      playerImg,
+      player.x * CELL + CELL * 0.15,
+      player.y * CELL + CELL * 0.15,
+      CELL * 0.7,
+      CELL * 0.7
+    )
+    return
+  }
+
+  // 🌸 ตัวเริ่มต้นน่ารัก (blob)
+  const bounce = Math.sin(Date.now() / 300) * 2
+
+  ctx.save()
+
+  // glow
+  ctx.shadowColor = '#f9a8d4'
+  ctx.shadowBlur = 20
+
+  // ตัว
+  ctx.fillStyle = '#f472b6'
   ctx.beginPath()
-  ctx.arc(player.x*CELL+CELL/2,player.y*CELL+CELL/2,CELL*0.3,0,Math.PI*2)
+  ctx.arc(cx, cy + bounce, CELL * 0.28, 0, Math.PI * 2)
   ctx.fill()
- }
+
+  ctx.shadowBlur = 0
+
+  // 👀 ตา
+  ctx.fillStyle = '#4a044e'
+  ctx.beginPath()
+  ctx.arc(cx - 6, cy - 4 + bounce, 3, 0, Math.PI * 2)
+  ctx.arc(cx + 6, cy - 4 + bounce, 3, 0, Math.PI * 2)
+  ctx.fill()
+
+  // 😊 ปาก
+  ctx.strokeStyle = '#4a044e'
+  ctx.lineWidth = 2
+  ctx.beginPath()
+  ctx.arc(cx, cy + 2 + bounce, 6, 0, Math.PI)
+  ctx.stroke()
+
+  // ✨ แก้ม
+  ctx.fillStyle = '#fbcfe8'
+  ctx.beginPath()
+  ctx.arc(cx - 10, cy + 2 + bounce, 3, 0, Math.PI * 2)
+  ctx.arc(cx + 10, cy + 2 + bounce, 3, 0, Math.PI * 2)
+  ctx.fill()
+
+  ctx.restore()
 }
 
 function circle(x,y,r){ctx.beginPath();ctx.arc(x*CELL+CELL/2,y*CELL+CELL/2,CELL*r,0,Math.PI*2);ctx.fill()}
@@ -527,3 +575,4 @@ updateLives();draw()
 </body>
 
 </html> 
+
